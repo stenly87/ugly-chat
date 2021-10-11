@@ -56,7 +56,7 @@ namespace Server
                         bw.Write("exit");
                         break;
                     }
-                    SendMessage(message, client);
+                    BroadcastMessage(message, client);
                 }
                 catch (Exception e) 
                 {
@@ -67,7 +67,7 @@ namespace Server
             bw.Close();
         }
 
-        static void SendMessage(string message, TcpClient from)
+        static void BroadcastMessage(string message, TcpClient from)
         {
             for (int i = 0; i < clients.Count; i++)
             {
