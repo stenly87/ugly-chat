@@ -18,12 +18,14 @@ namespace ConsoleApp11
             Thread thread = new Thread(Listen);
             thread.Start(client);
             var stream = client.GetStream();
-            using (var bw = new BinaryWriter(stream))
-                while (true)
-                {
-                    string message = Console.ReadLine();
-                    bw.Write(message);
-                }
+            var bw = new BinaryWriter(stream);
+            while (true)
+            {
+                string message = Console.ReadLine();
+                bw.Write(message);
+                if (message == "exit")
+                    break;
+            }
         }
 
         static void Listen(object p)
@@ -35,6 +37,8 @@ namespace ConsoleApp11
                 while (true)
                 {
                     string message = br.ReadString();
+                    if (message == "exit")
+                        break;
                     Console.WriteLine(message);
                 }
             }

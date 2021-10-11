@@ -44,14 +44,27 @@ namespace Server
             string message = null;
             var stream = client.GetStream();
             var br = new BinaryReader(stream);
+            var bw = new BinaryWriter(stream);
             while (true)
             {
-                if (stream.DataAvailable)
+                try
                 {
                     message = br.ReadString();
+                    if (message == "exit")
+                    {
+                        clients.Remove(client);
+                        bw.Write("exit");
+                        break;
+                    }
                     SendMessage(message, client);
                 }
+                catch (Exception e) 
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
+            br.Close();
+            bw.Close();
         }
 
         static void SendMessage(string message, TcpClient from)
