@@ -24,14 +24,14 @@ namespace Server
             Console.ReadLine();
         }
 
-        static List<TcpClient> clients = new List<TcpClient>();
+        static List<ChatClient> clients = new List<ChatClient>();
 
         static void Listen(object p)
         {
             TcpListener listener = (TcpListener)p;
             while (true)
             {
-                var client = listener.AcceptTcpClient();
+                var client = new ChatClient (listener.AcceptTcpClient());
                 clients.Add(client);
                 Thread thread = new Thread(ProxyMessages);
                 thread.Start(client);
@@ -40,43 +40,74 @@ namespace Server
 
         static void ProxyMessages(object p)
         {
-            TcpClient client = (TcpClient)p;
+            ChatClient client = (ChatClient)p;
             string message = null;
-            var stream = client.GetStream();
-            var br = new BinaryReader(stream);
-            var bw = new BinaryWriter(stream);
+            int errorCount = 0;
             while (true)
             {
                 try
                 {
-                    message = br.ReadString();
-                    if (message == "exit")
+                    message = client.Reader.ReadString();
+                    errorCount = 0;
+                    if (message.StartsWith("nick$"))
+                    {
+                        client.Nick = message.Split('$')[1];
+                        message = $"{client.Nick} ворвался на сервер";
+                        BroadcastMessage(message, null);
+                        continue;
+                    }
+                    // /p nick: test
+                    else if (message.StartsWith("/p"))
+                    {
+                        int index = message.IndexOf(':');
+                        string targetNick = new string(message.Skip(3).Take(index - 3).ToArray());
+                        string text = new string(message.Skip(index + 1).ToArray());
+                        SendPrivate(client, targetNick, text);
+                        continue;
+                    }
+                    else if (message == "exit")
                     {
                         clients.Remove(client);
-                        bw.Write("exit");
+                        client.Sender.Write("exit");
                         break;
                     }
                     BroadcastMessage(message, client);
                 }
                 catch (Exception e) 
                 {
+                    errorCount++;
                     Console.WriteLine(e.Message);
+                    if (errorCount > 10)
+                        break;
                 }
             }
-            br.Close();
-            bw.Close();
+            BroadcastMessage($"{client.Nick} покинул заведение", null);
+            client.Close();
         }
 
-        static void BroadcastMessage(string message, TcpClient from)
+        private static void SendPrivate(ChatClient client, string targetNick, string text)
         {
+            var targetClient = clients.Find(s => s.Nick == targetNick);
+            if (targetClient == null)
+                return;
+            targetClient.Sender.Write($"{client.Nick} шепчет: {text}");
+
+
+        }
+
+        static void BroadcastMessage(string message, ChatClient from)
+        {
+            if (from != null)
+                message = $"{from.Nick}: {message}";
+            else
+                message = $"сервер: {message}";
             for (int i = 0; i < clients.Count; i++)
             {
                 if (clients[i] == from)
                     continue;
                 try
                 {
-                    var bw = new BinaryWriter(clients[i].GetStream());
-                    bw.Write(message);
+                    clients[i].Sender.Write(message);
                 }
                 catch (Exception e)
                 {

@@ -19,6 +19,10 @@ namespace ConsoleApp11
             thread.Start(client);
             var stream = client.GetStream();
             var bw = new BinaryWriter(stream);
+            Console.WriteLine("Введите ник");
+            string nick = Console.ReadLine();
+            bw.Write("nick$" + nick);
+            Console.WriteLine("синтаксис для приватного сообщения: /p ник: текст");
             while (true)
             {
                 string message = Console.ReadLine();
